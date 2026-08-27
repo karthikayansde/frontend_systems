@@ -23,12 +23,26 @@ class SmartDialogs {
         title: Text(title),
         content: Text(message),
         actions: [
-          TextButton(
+          OutlinedButton(
             onPressed: () => Navigator.pop(context),
             child: Text(buttonText),
           ),
         ],
       ),
+    );
+  }
+
+  // Show custom dialog
+  static Future<T?> showCustom<T>({
+    required Widget Function(BuildContext context) builder,
+    bool barrierDismissible = true,
+  }) async {
+    if (_context == null) return null;
+
+    return showDialog<T>(
+      context: _context!,
+      barrierDismissible: barrierDismissible,
+      builder: builder,
     );
   }
 
@@ -52,7 +66,7 @@ class SmartDialogs {
             onPressed: () => Navigator.pop(context, false),
             child: Text(cancelButtonText),
           ),
-          TextButton(
+          OutlinedButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(buttonText, style: TextStyle(color: buttonColor)),
           ),

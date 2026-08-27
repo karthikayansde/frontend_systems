@@ -50,7 +50,10 @@ class AppColorSchemes {
       brightness: Brightness.dark,
       colorScheme: scheme,
       cardTheme: CardThemeData(
-        color: scheme.surfaceContainerLowest,
+        color: scheme.onSecondary,
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: scheme.onSecondary,
       ),
       extensions: extensionColors,
       textTheme: _textTheme,
@@ -83,9 +86,9 @@ class AppColorSchemes {
 
 List<AppColorsExtension> extensionColors = [
   const AppColorsExtension(
-    success: AppColors.successGreen,
+    success: AppColors.success,
     warning: AppColors.warning,
-    info: AppColors.infoBlue,
+    info: AppColors.info,
   ),
 ];
 

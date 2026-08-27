@@ -90,13 +90,13 @@ class SmartSnackBars {
   static Color _getBgColor(NotificationType type) {
     switch (type) {
       case NotificationType.success:
-        return AppColors.successGreen;
+        return AppColors.success;
       case NotificationType.error:
         return AppColors.error;
       case NotificationType.warning:
         return AppColors.warning;
       case NotificationType.info:
-        return AppColors.infoBlue;
+        return AppColors.info;
     }
   }
 

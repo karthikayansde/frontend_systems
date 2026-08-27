@@ -186,4 +186,11 @@ class AppStrings {
   static const String rescheduleTasksGuide = "Long press and drag a task horizontally along the timeline to reschedule it.";
   static const String gotIt = "Got it";
   static const String confirm = "Confirm";
+
+  // OTP Dialog
+  static const String otpTitle = "Verify Code";
+  static const String otpSubtitle = "Enter the 6-digit code sent to your email";
+  static const String otpBtn = "Verify & Proceed";
+  static const String resendOtpText = "Didn't receive code? ";
+  static const String resendOtpAction = "Resend";
 }
