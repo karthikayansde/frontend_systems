@@ -233,8 +233,11 @@ class _TextThemeRow extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Ag - Rapid font preview',
-              style: style.copyWith(color: colorScheme.onSurface),
+              'Ag 1234567890 - Rapid font preview',
+              style: style.copyWith(
+                color: colorScheme.onSurface,
+                fontFeatures: [const FontFeature.tabularFigures()],
+              ),
             ),
           ],
         ),
