@@ -34,6 +34,8 @@ class SpacingsScreen extends StatelessWidget {
                     _buildSpacingItem(context, 'spaceLg', AppSpacings.spaceLg),
                     _buildSpacingItem(context, 'spaceXl', AppSpacings.spaceXl),
                     _buildSpacingItem(context, 'spaceXxl', AppSpacings.spaceXxl),
+                    _buildSpacingItem(context, 'scaffold top', AppSpacings.scaffoldTop),
+                    _buildSpacingItem(context, 'scaffold horizontal', AppSpacings.scaffoldHorizontal),
                   ],
                 ),
               ),

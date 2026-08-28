@@ -8,6 +8,7 @@ import '../core/shared_widgets/smart_snack_bar.dart';
 import '../core/shared_widgets/smart_form_fields/smart_buttons.dart';
 import '../core/shared_widgets/smart_form_fields/smart_date_time_picker.dart';
 import 'otp_dialog.dart';
+import '../core/utils/app_input_formatters.dart';
 
 class DemoFormFields extends SmartForm {
   @override
@@ -20,6 +21,7 @@ class DemoFormFields extends SmartForm {
   static const String passwordField = 'password';
   static const String bioField = 'bio';
   static const String githubField = 'github';
+  static const String decimalField = 'decimal';
 
   // Emoji Fields
   static const String emojiField = 'emoji';
@@ -112,6 +114,32 @@ class DemoFormFields extends SmartForm {
         isGreenWarnNeed: true,
         validationMessages: {
           ValidationMessage.required: (_) => 'GitHub handle is required.',
+        },
+      ),
+      decimalField: FieldConfig.text(
+        key: decimalField,
+        label: 'Decimal Value (-100.0 to 100.0)',
+        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+        inputFormatters: AppInputFormatters.onlyDigitsWithDecimal(
+          min: -100.0,
+          max: 100.0,
+          decimalPrecision: 2,
+        ),
+        validators: [
+          Validators.delegate((control) {
+            final value = control.value;
+            if (value == null || value.toString().isEmpty) {
+              return null;
+            }
+            final doubleValue = double.tryParse(value.toString());
+            if (doubleValue == null || doubleValue < -100.0) {
+              return {ValidationMessage.min: true};
+            }
+            return null;
+          }),
+        ],
+        validationMessages: {
+          ValidationMessage.min: (error) => 'Value must be at least -100.0.',
         },
       ),
 
@@ -496,6 +524,13 @@ class _FormFieldsScreenState extends State<FormFieldsScreen> {
                         title: 'This is Multi-line Description Field',
                         description: 'Description area that allows multi-line text input (maxLines: 3).',
                         field: _form.buildWidget(DemoFormFields.bioField),
+                      ),
+                      const SizedBox(height: 24),
+                      _buildFieldSection(
+                        context,
+                        title: 'This is Decimal Field',
+                        description: 'Allows only digits, a negative sign, and a single decimal point (Range: -100.0 to 100.0, Max 2 decimals).',
+                        field: _form.buildWidget(DemoFormFields.decimalField),
                       ),
                       const SizedBox(height: 24),
                       _buildFieldSection(

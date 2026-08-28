@@ -13,6 +13,10 @@ class AppSpacings {
   static const double spaceLg = 20.0;
   static const double spaceXl = 24.0;
   static const double spaceXxl = 32.0;
+  // scaffold top, horizontal
+  static const double scaffoldTop = 8.0;
+  static const double scaffoldHorizontal = 16.0;
+
 
   // icon sizes
   static const double iconSmall = 16.0;
