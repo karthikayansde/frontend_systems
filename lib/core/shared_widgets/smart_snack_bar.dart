@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
@@ -232,6 +233,21 @@ class _SmartOverlayToastState extends State<SmartOverlayToast>
   late AnimationController _controller;
   late Animation<double> _opacityAnimation;
   late Animation<Offset> _slideAnimation;
+  Timer? _dismissTimer;
+  bool _isDismissed = false;
+
+  void _dismiss() {
+    if (_isDismissed) return;
+    _isDismissed = true;
+    _dismissTimer?.cancel();
+    if (mounted) {
+      _controller.reverse().then((_) {
+        widget.onDismiss();
+      });
+    } else {
+      widget.onDismiss();
+    }
+  }
 
   @override
   void initState() {
@@ -251,19 +267,16 @@ class _SmartOverlayToastState extends State<SmartOverlayToast>
     _controller.forward();
 
     // Auto-dismiss after the duration (with animation fade out)
-    final int fadeOutDelay = widget.duration.inMilliseconds - 250;
-    Future.delayed(
-        Duration(milliseconds: fadeOutDelay > 0 ? fadeOutDelay : 2750), () {
-      if (mounted) {
-        _controller.reverse().then((_) {
-          widget.onDismiss();
-        });
-      }
+    final int durationMs = widget.duration.inMilliseconds;
+    final int fadeOutDelay = durationMs > 300 ? durationMs - 250 : durationMs ~/ 2;
+    _dismissTimer = Timer(Duration(milliseconds: fadeOutDelay), () {
+      _dismiss();
     });
   }
 
   @override
   void dispose() {
+    _dismissTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -281,117 +294,12 @@ class _SmartOverlayToastState extends State<SmartOverlayToast>
           onAction: widget.onAction != null
               ? () {
                   widget.onAction!();
-                  _controller.reverse().then((_) {
-                    widget.onDismiss();
-                  });
+                  _dismiss();
                 }
               : null,
-          onClose: () {
-            _controller.reverse().then((_) {
-              widget.onDismiss();
-            });
-          },
+          onClose: _dismiss,
         ),
       ),
     );
   }
 }
-
-// void main() => runApp(const MyApp());
-//
-// class MyApp extends StatelessWidget {
-//   const MyApp({super.key});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return MaterialApp(
-//       // CRITICAL: Link the messenger key here
-//       scaffoldMessengerKey: AppNotify.messengerKey,
-//       title: 'Flutter Commonized App',
-//       home: const HomeScreen(),
-//     );
-//   }
-// }
-//
-// class HomeScreen extends StatelessWidget {
-//   const HomeScreen({super.key});
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text('Commonized Notifications'),
-//         centerTitle: true,
-//       ),
-//       body: Padding(
-//         padding: const EdgeInsets.all(20.0),
-//         child: Column(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           crossAxisAlignment: CrossAxisAlignment.stretch,
-//           children: [
-//             // 1. Success Call
-//             ElevatedButton.icon(
-//               onPressed: () {
-//                 AppNotify.show(
-//                   message: "Profile updated successfully!",
-//                   type: NotificationType.success,
-//                 );
-//               },
-//               icon: const Icon(Icons.check),
-//               label: const Text("Show Success"),
-//               style: ElevatedButton.styleFrom(backgroundColor: Colors.green[100]),
-//             ),
-//             const SizedBox(height: 16),
-//
-//             // 2. Error Call
-//             ElevatedButton.icon(
-//               onPressed: () {
-//                 AppNotify.show(
-//                   message: "Failed to upload image. Please try again.",
-//                   type: NotificationType.error,
-//                 );
-//               },
-//               icon: const Icon(Icons.error),
-//               label: const Text("Show Error"),
-//               style: ElevatedButton.styleFrom(backgroundColor: Colors.red[100]),
-//             ),
-//             const SizedBox(height: 16),
-//
-//             // 3. Warning Call with "Undo" Action
-//             ElevatedButton.icon(
-//               onPressed: () {
-//                 AppNotify.show(
-//                   message: "Item moved to trash.",
-//                   type: NotificationType.warning,
-//                   actionLabel: "UNDO",
-//                   onAction: () {
-//                     // Logic to restore item goes here
-//                     debugPrint("User tapped Undo!");
-//                   },
-//                 );
-//               },
-//               icon: const Icon(Icons.warning),
-//               label: const Text("Show Warning with Action"),
-//               style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[100]),
-//             ),
-//             const SizedBox(height: 16),
-//
-//             // 4. Info Call
-//             ElevatedButton.icon(
-//               onPressed: () {
-//                 AppNotify.show(
-//                   actionLabel: "summa",
-//                   message: "A new version of the app is available.",
-//                   type: NotificationType.info,
-//                 );
-//               },
-//               icon: const Icon(Icons.info),
-//               label: const Text("Show Info"),
-//               style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[100]),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }

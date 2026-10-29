@@ -27,6 +27,8 @@ class AppTheme {
       );
     return _instance!;
   }
+  static bool get isInitialized => _instance != null;
+
   static AppTheme get instance {
     if (_instance == null) {
       throw Exception("AppTheme must be initialized by calling the factory constructor first.");
@@ -102,7 +104,7 @@ class AppTheme {
 
   // --- get brightness color ---
   static Color getBrightnessColor(BuildContext context){
-    return Theme.of(context).brightness == Brightness.dark?AppColors.black:AppColors.white;
+    return Theme.of(context).brightness == Brightness.dark ? AppColors.white : AppColors.black;
   }
   // --- get brightness color ---
 }
@@ -135,7 +137,7 @@ class _AppThemeDropdownBuilderState extends State<_AppThemeDropdownBuilder> {
   }
 
   void _changeTheme(String key) {
-    widget.appTheme.setTheme(key);
+    widget.appTheme.updateTheme(key);
     setState(() => _selectedKey = key);
   }
 
@@ -166,38 +168,58 @@ class NormalThemeController {
   }
 }
 
-class _AppThemeBuilder extends StatelessWidget {
+class _AppThemeBuilder extends StatefulWidget {
   final List<AppThemeModel> colorSchemes;
   final String selectedTheme;
   final Widget Function(
     ThemeData theme,
     ThemeData darkTheme,
-    ThemeMode themeMode
+    ThemeMode themeMode,
   ) builder;
 
-  _AppThemeBuilder({
+  const _AppThemeBuilder({
     required this.selectedTheme,
     required this.colorSchemes,
     required this.builder,
   });
-  final NormalThemeController controller = NormalThemeController();
+
+  @override
+  State<_AppThemeBuilder> createState() => _AppThemeBuilderState();
+}
+
+class _AppThemeBuilderState extends State<_AppThemeBuilder> {
+  final NormalThemeController _controller = NormalThemeController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (_controller.currentTheme.value != widget.selectedTheme) {
+      _controller.setTheme(widget.selectedTheme);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Sync controller with the persisted theme from storage on first build
-    if (controller.currentTheme.value != selectedTheme) {
-      controller.setTheme(selectedTheme);
-    }
     return ValueListenableBuilder<String>(
-      valueListenable: controller.currentTheme,
+      valueListenable: _controller.currentTheme,
       builder: (context, themeKey, child) {
-        final resolvedTheme = colorSchemes.firstWhere(
+        final resolvedTheme = widget.colorSchemes.firstWhere(
           (e) => e.key == themeKey,
-          orElse: () => colorSchemes.firstWhere(
+          orElse: () => widget.colorSchemes.firstWhere(
             (element) => element.key == AppColorSchemes.defaultThemeKey,
+            orElse: () => widget.colorSchemes.first,
           ),
         );
-        final lightTheme = colorSchemes[1].data;
-        final darkTheme = colorSchemes[2].data;
+
+        final lightTheme = widget.colorSchemes.firstWhere(
+          (e) => e.mode == ThemeMode.light,
+          orElse: () => widget.colorSchemes.first,
+        ).data;
+
+        final darkTheme = widget.colorSchemes.firstWhere(
+          (e) => e.mode == ThemeMode.dark,
+          orElse: () => widget.colorSchemes.last,
+        ).data;
 
         ThemeData effectiveTheme = lightTheme;
         ThemeData effectiveDarkTheme = darkTheme;
@@ -209,7 +231,7 @@ class _AppThemeBuilder extends StatelessWidget {
           effectiveTheme = resolvedTheme.data;
         }
 
-        return builder(effectiveTheme, effectiveDarkTheme, themeMode);
+        return widget.builder(effectiveTheme, effectiveDarkTheme, themeMode);
       },
     );
   }
@@ -218,12 +240,19 @@ class _AppThemeBuilder extends StatelessWidget {
 // getX theme
 class GetThemeController extends GetxController {
   final List<AppThemeModel> colorSchemes;
+  final RxString currentThemeKey = AppColorSchemes.defaultThemeKey.obs;
+  final Rx<ThemeMode> currentThemeMode = ThemeMode.system.obs;
+
   GetThemeController(this.colorSchemes);
+
   void setTheme(String themeKey) {
+    currentThemeKey.value = themeKey;
     for(var theme in colorSchemes){
       if(theme.key == themeKey){
+        currentThemeMode.value = theme.mode;
         Get.changeThemeMode(theme.mode);
         Get.changeTheme(theme.data);
+        break;
       }
     }
   }
@@ -250,49 +279,49 @@ class _GetAppThemeBuilder extends StatefulWidget {
 
 class _GetAppThemeBuilderState extends State<_GetAppThemeBuilder> {
   late final GetThemeController _controller;
-  late final ThemeData _theme;
-  late final ThemeData _darkTheme;
-  final ThemeMode _themeMode = ThemeMode.system;
 
   @override
   void initState() {
     super.initState();
-    _theme = widget.colorSchemes[1].data;
-    _darkTheme = widget.colorSchemes[2].data;
-    _controller = Get.put(GetThemeController(widget.colorSchemes));
+    _controller = Get.isRegistered<GetThemeController>()
+        ? Get.find<GetThemeController>()
+        : Get.put(GetThemeController(widget.colorSchemes));
     _controller.setTheme(widget.selectedTheme);
   }
 
   @override
   Widget build(BuildContext context) {
-    return widget.builder(_theme, _darkTheme, _themeMode);
+    return Obx(() {
+      final themeKey = _controller.currentThemeKey.value;
+      final resolvedTheme = widget.colorSchemes.firstWhere(
+        (e) => e.key == themeKey,
+        orElse: () => widget.colorSchemes.firstWhere(
+          (element) => element.key == AppColorSchemes.defaultThemeKey,
+          orElse: () => widget.colorSchemes.first,
+        ),
+      );
+
+      final lightTheme = widget.colorSchemes.firstWhere(
+        (e) => e.mode == ThemeMode.light,
+        orElse: () => widget.colorSchemes.first,
+      ).data;
+
+      final darkTheme = widget.colorSchemes.firstWhere(
+        (e) => e.mode == ThemeMode.dark,
+        orElse: () => widget.colorSchemes.last,
+      ).data;
+
+      ThemeData effectiveTheme = lightTheme;
+      ThemeData effectiveDarkTheme = darkTheme;
+      ThemeMode themeMode = resolvedTheme.mode;
+
+      if (resolvedTheme.mode == ThemeMode.dark) {
+        effectiveDarkTheme = resolvedTheme.data;
+      } else if (resolvedTheme.mode == ThemeMode.light) {
+        effectiveTheme = resolvedTheme.data;
+      }
+
+      return widget.builder(effectiveTheme, effectiveDarkTheme, themeMode);
+    });
   }
 }
-///usage
-// final ColorScheme colors = Theme.of(context).colorScheme;
-// Container(color: colors.primary);
-/// storage need to init first then theme
-// // First time (Initialization)
-// final theme = AppTheme(
-//     isNative: true,
-//     colorSchemes: mySchemes,
-//     storage: myStorage
-// );
-//
-// // Anywhere else in your app
-// final sameTheme = AppTheme.instance;
-
-// AppTheme.instance.dropdownBuilder(
-//       (selectedKey, themeMap, changeTheme) {
-//     return DropdownButton<String>(
-//       value: selectedKey,
-//       onChanged: (key) {
-//         changeTheme(key!);
-//         AppTheme.instance.updateTheme(key);
-//       },
-//       items: themeMap.entries
-//           .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value.name)))
-//           .toList(),
-//     );
-//   },
-// ),

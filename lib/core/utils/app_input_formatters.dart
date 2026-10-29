@@ -18,7 +18,7 @@ class AppInputFormatters {
   /// Important: Inside a character class `[]`, only `^`, `-`, `]`, `\` have special meaning.
   /// Others like `!@#$%^&*()` don't need escaping.
   /// We need to escape `\` itself, `[`, `]`, `-`.
-  static const String _commonSymbols = r'!@#$%^&*()_+={}\[\]:;<>,?~\\/\-"\'; // Escaped `[`, `]`, `\`, `-`, added single/double quotes at the end
+  static const String _commonSymbols = r'!@#$%^&*()_+={}\[\]:;<>,.?~\\/\-"' r"'";
 
   /// Denies a wide range of emojis and some obscure Unicode symbols.
   /// We convert these to individual characters or specific ranges safe for a combined character class.
@@ -133,9 +133,12 @@ class AppInputFormatters {
     }
     return formatters;
   }
+
+  /// Formatter for fields allowing English and Tamil letters, digits, spaces, and common special characters.
+  /// Optionally limits the length of the input.
   static List<TextInputFormatter> onlyWordsDigitsSpaceAndSpecial({int? length}) {
     final List<TextInputFormatter> formatters = [
-      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\s' '$_tamilChars]', unicode: true)),
+      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\s' '$_tamilChars' r'!@#\$%^&*()_+={}\[\]:;<>,.?~\\/\-"' r"']", unicode: true)),
     ];
     if (length != null) {
       formatters.add(LengthLimitingTextInputFormatter(length));

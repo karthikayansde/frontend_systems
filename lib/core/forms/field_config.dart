@@ -30,6 +30,7 @@ class FieldConfig<T> {
   final bool isGreenWarnNeed;
   final Map<String, ValidationMessageFunction>? validationMessages;
   final void Function(dynamic value)? onChanged;
+  final double? maxWidth;
 
   // Validation & Data
   final bool required;
@@ -85,6 +86,7 @@ class FieldConfig<T> {
     this.isGreenWarnNeed = false,
     this.validationMessages,
     this.onChanged,
+    this.maxWidth = 450,
     this.required = false,
     this.showRequiredStar = false,
     this.defaultValue,
@@ -131,6 +133,7 @@ class FieldConfig<T> {
     bool isGreenWarnNeed = false,
     Map<String, ValidationMessageFunction>? validationMessages,
     void Function(String? value)? onChanged,
+    double? maxWidth = 450,
     bool required = false,
     bool showRequiredStar = false,
     String? defaultValue,
@@ -151,6 +154,7 @@ class FieldConfig<T> {
         isGreenWarnNeed: isGreenWarnNeed,
         validationMessages: validationMessages,
         onChanged: (v) => onChanged?.call(v as String?),
+        maxWidth: maxWidth,
         required: required,
         showRequiredStar: showRequiredStar,
         defaultValue: defaultValue,
@@ -171,6 +175,7 @@ class FieldConfig<T> {
     bool isGreenWarnNeed = false,
     Map<String, ValidationMessageFunction>? validationMessages,
     void Function(String? value)? onChanged,
+    double? maxWidth = 450,
     bool required = false,
     bool showRequiredStar = false,
     String? defaultValue,
@@ -185,6 +190,7 @@ class FieldConfig<T> {
         isGreenWarnNeed: isGreenWarnNeed,
         validationMessages: validationMessages,
         onChanged: (v) => onChanged?.call(v as String?),
+        maxWidth: maxWidth,
         required: required,
         showRequiredStar: showRequiredStar,
         defaultValue: defaultValue,
@@ -199,6 +205,7 @@ class FieldConfig<T> {
     bool isGreenWarnNeed = false,
     Map<String, ValidationMessageFunction>? validationMessages,
     void Function(Color? value)? onChanged,
+    double? maxWidth = 450,
     bool required = false,
     bool showRequiredStar = false,
     int? defaultValue,
@@ -213,6 +220,7 @@ class FieldConfig<T> {
         isGreenWarnNeed: isGreenWarnNeed,
         validationMessages: validationMessages,
         onChanged: (v) => onChanged?.call(v != null ? Color(v as int) : null),
+        maxWidth: maxWidth,
         required: required,
         showRequiredStar: showRequiredStar,
         defaultValue: defaultValue,
@@ -227,6 +235,7 @@ class FieldConfig<T> {
     bool isGreenWarnNeed = false,
     Map<String, ValidationMessageFunction>? validationMessages,
     void Function(String? value)? onChanged,
+    double? maxWidth = 450,
     bool required = false,
     bool showRequiredStar = false,
     String? defaultValue,
@@ -243,6 +252,7 @@ class FieldConfig<T> {
         isGreenWarnNeed: isGreenWarnNeed,
         validationMessages: validationMessages,
         onChanged: (v) => onChanged?.call(v as String?),
+        maxWidth: maxWidth,
         required: required,
         showRequiredStar: showRequiredStar,
         defaultValue: defaultValue,
@@ -259,6 +269,7 @@ class FieldConfig<T> {
     bool isGreenWarnNeed = false,
     Map<String, ValidationMessageFunction>? validationMessages,
     void Function(T? value)? onChanged,
+    double? maxWidth = 450,
     bool required = false,
     bool showRequiredStar = false,
     T? defaultValue,
@@ -284,6 +295,7 @@ class FieldConfig<T> {
         isGreenWarnNeed: isGreenWarnNeed,
         validationMessages: validationMessages,
         onChanged: (v) => onChanged?.call(v as T?),
+        maxWidth: maxWidth,
         required: required,
         showRequiredStar: showRequiredStar,
         defaultValue: defaultValue,
@@ -310,6 +322,7 @@ class FieldConfig<T> {
     bool isGreenWarnNeed = false,
     Map<String, ValidationMessageFunction>? validationMessages,
     void Function(List<String> value)? onChanged,
+    double? maxWidth = 450,
     bool required = false,
     bool showRequiredStar = false,
     List<String>? defaultValue,
@@ -334,6 +347,7 @@ class FieldConfig<T> {
         isGreenWarnNeed: isGreenWarnNeed,
         validationMessages: validationMessages,
         onChanged: (v) => onChanged?.call(v as List<String>),
+        maxWidth: maxWidth,
         required: required,
         showRequiredStar: showRequiredStar,
         defaultValue: defaultValue,
@@ -360,6 +374,7 @@ class FieldConfig<T> {
     bool isGreenWarnNeed = false,
     Map<String, ValidationMessageFunction>? validationMessages,
     void Function(T? value)? onChanged,
+    double? maxWidth = 450,
     bool required = false,
     bool showRequiredStar = false,
     T? defaultValue,
@@ -376,6 +391,7 @@ class FieldConfig<T> {
         isGreenWarnNeed: isGreenWarnNeed,
         validationMessages: validationMessages,
         onChanged: (v) => onChanged?.call(v as T?),
+        maxWidth: maxWidth,
         required: required,
         showRequiredStar: showRequiredStar,
         defaultValue: defaultValue,
@@ -388,7 +404,10 @@ class FieldConfig<T> {
   List<Validator<dynamic>> get buildValidators {
     final list = <Validator<dynamic>>[];
     if (required) list.add(Validators.required);
-    list.addAll(validators);
+    for (var v in validators) {
+      if (required && v == Validators.required) continue;
+      list.add(v);
+    }
     return list;
   }
 
@@ -418,6 +437,7 @@ class FieldConfig<T> {
           isPasswordField: isPasswordField,
           showString: showString,
           hideString: hideString,
+          maxWidth: maxWidth,
         );
       case SmartFieldType.emoji:
         return SmartEmojiPickerField(
@@ -428,6 +448,7 @@ class FieldConfig<T> {
           isGreenWarnNeed: isGreenWarnNeed,
           validationMessages: validationMessages,
           onChanged: (v) => onChanged?.call(v),
+          maxWidth: maxWidth,
         );
       case SmartFieldType.color:
         return SmartColorPickerField(
@@ -438,6 +459,7 @@ class FieldConfig<T> {
           isGreenWarnNeed: isGreenWarnNeed,
           validationMessages: validationMessages,
           onChanged: (v) => onChanged?.call(v),
+          maxWidth: maxWidth,
         );
       case SmartFieldType.duration:
         return SmartDurationPicker(
@@ -450,6 +472,7 @@ class FieldConfig<T> {
           onChanged: (v) => onChanged?.call(v),
           minDuration: minDuration ?? const Duration(minutes: 1),
           maxDuration: maxDuration ?? const Duration(hours: 24),
+          maxWidth: maxWidth,
         );
       case SmartFieldType.dateTime:
         return SmartDateTimePicker(
@@ -471,6 +494,7 @@ class FieldConfig<T> {
           timeFormat: timeFormat,
           dateCustomFormatter: dateCustomFormatter,
           timeCustomFormatter: timeCustomFormatter,
+          maxWidth: maxWidth,
         );
       case SmartFieldType.dropdown:
         return SmartDropDown(
@@ -492,6 +516,7 @@ class FieldConfig<T> {
           deselectAllText: deselectAllText,
           saveText: saveText,
           cancelText: cancelText,
+          maxWidth: maxWidth,
         );
       case SmartFieldType.checkRadio:
         return SmartCheckRadioBox(
@@ -505,6 +530,7 @@ class FieldConfig<T> {
           items: items!,
           isSingleSelect: isSingleSelect ?? true,
           isWrap: isWrap ?? false,
+          maxWidth: maxWidth,
         );
     }
   }

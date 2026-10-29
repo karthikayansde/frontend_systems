@@ -6,6 +6,7 @@ import '../core/constants/app_spacings.dart';
 import '../core/constants/app_strings.dart';
 import '../core/forms/field_config.dart';
 import '../core/forms/smart_form.dart';
+import '../core/shared_widgets/smart_dialogs.dart';
 import '../core/shared_widgets/smart_snack_bar.dart';
 
 class OtpForm extends SmartForm {
@@ -16,7 +17,6 @@ class OtpForm extends SmartForm {
           label: 'One-Time Password',
           required: true,
           validators: [
-            Validators.required,
             Validators.minLength(6),
             Validators.maxLength(6),
             Validators.pattern(RegExp(r'^\d{6}$')), // digits only
@@ -36,6 +36,13 @@ class OtpDialog extends StatefulWidget {
   final ValueNotifier<int> secondsRemainingNotifier;
   final Future<void> Function(String otp) onVerify;
   final Future<void> Function() onResend;
+  final String? title;
+  final String? subtitle;
+  final String? verifyButtonText;
+  final String? resendPrefixText;
+  final String? resendActionText;
+  final String? resendSuccessMessage;
+  final String Function(int seconds)? resendTimerTextBuilder;
 
   const OtpDialog({
     super.key,
@@ -43,6 +50,13 @@ class OtpDialog extends StatefulWidget {
     required this.secondsRemainingNotifier,
     required this.onVerify,
     required this.onResend,
+    this.title,
+    this.subtitle,
+    this.verifyButtonText,
+    this.resendPrefixText,
+    this.resendActionText,
+    this.resendSuccessMessage,
+    this.resendTimerTextBuilder,
   });
 
   static Future<bool?> show(
@@ -51,19 +65,29 @@ class OtpDialog extends StatefulWidget {
     required ValueNotifier<int> secondsRemainingNotifier,
     required Future<void> Function(String otp) onVerify,
     required Future<void> Function() onResend,
+    String? title,
+    String? subtitle,
+    String? verifyButtonText,
+    String? resendPrefixText,
+    String? resendActionText,
+    String? resendSuccessMessage,
+    String Function(int seconds)? resendTimerTextBuilder,
   }) {
-    return showDialog<bool>(
+    return SmartDialogs.showCustom<bool>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.25),
       barrierDismissible: false, // Prevent dismissing by tapping outside when operations are active
-      builder: (context) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
-        child: OtpDialog(
-          email: email,
-          secondsRemainingNotifier: secondsRemainingNotifier,
-          onVerify: onVerify,
-          onResend: onResend,
-        ),
+      builder: (context) => OtpDialog(
+        email: email,
+        secondsRemainingNotifier: secondsRemainingNotifier,
+        onVerify: onVerify,
+        onResend: onResend,
+        title: title,
+        subtitle: subtitle,
+        verifyButtonText: verifyButtonText,
+        resendPrefixText: resendPrefixText,
+        resendActionText: resendActionText,
+        resendSuccessMessage: resendSuccessMessage,
+        resendTimerTextBuilder: resendTimerTextBuilder,
       ),
     );
   }
@@ -95,7 +119,7 @@ class _OtpDialogState extends State<OtpDialog> {
     return PopScope(
       canPop: !_isLoading,
       child: Dialog(
-        backgroundColor: theme.dialogBackgroundColor ?? colorScheme.surfaceContainerHigh,
+        backgroundColor: theme.dialogTheme.backgroundColor ?? colorScheme.surfaceContainerHigh,
         elevation: 8,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(28.0),
@@ -120,7 +144,7 @@ class _OtpDialogState extends State<OtpDialog> {
                     ),
                   ),
                   Text(
-                    AppStrings.otpTitle,
+                    widget.title ?? AppStrings.otpTitle,
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -128,7 +152,7 @@ class _OtpDialogState extends State<OtpDialog> {
                   ),
                   const SizedBox(height: AppSpacings.spaceXs),
                   Text(
-                    AppStrings.otpSubtitle,
+                    widget.subtitle ?? AppStrings.otpSubtitle,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.hintColor,
                     ),
@@ -189,7 +213,7 @@ class _OtpDialogState extends State<OtpDialog> {
                                       ),
                                     )
                                   : Text(
-                                      AppStrings.otpBtn,
+                                      widget.verifyButtonText ?? AppStrings.otpBtn,
                                       style: theme.textTheme.labelLarge?.copyWith(
                                         color: colorScheme.onPrimary,
                                         fontWeight: FontWeight.bold,
@@ -210,18 +234,20 @@ class _OtpDialogState extends State<OtpDialog> {
                         children: [
                           if (secondsRemaining > 0) ...[
                             Text(
-                              "Resend OTP in ${secondsRemaining}s",
+                              widget.resendTimerTextBuilder?.call(secondsRemaining) ??
+                                  "Resend OTP in ${secondsRemaining}s",
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.hintColor,
                               ),
                             ),
                           ] else ...[
                             Text(
-                              AppStrings.resendOtpText,
+                              widget.resendPrefixText ?? AppStrings.resendOtpText,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.hintColor,
                               ),
                             ),
+                            const SizedBox(width: 4),
                             GestureDetector(
                               onTap: _isLoading
                                   ? null
@@ -233,7 +259,7 @@ class _OtpDialogState extends State<OtpDialog> {
                                         await widget.onResend();
                                         SmartSnackBars.showOverlay(
                                           context,
-                                          message: 'Verification code resent!',
+                                          message: widget.resendSuccessMessage ?? 'Verification code resent!',
                                           type: NotificationType.success,
                                         );
                                       } catch (e) {
@@ -251,7 +277,7 @@ class _OtpDialogState extends State<OtpDialog> {
                                       }
                                     },
                               child: Text(
-                                AppStrings.resendOtpAction,
+                                widget.resendActionText ?? AppStrings.resendOtpAction,
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: colorScheme.primary,
                                   fontWeight: FontWeight.bold,

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:reactive_forms/reactive_forms.dart';
@@ -55,6 +56,15 @@ class SmartDateTimePicker extends StatefulWidget {
   /// Optional custom time formatter callback.
   final String Function(DateTime)? timeCustomFormatter;
 
+  final double? maxWidth;
+  final String? cancelText;
+  final String? confirmText;
+  final String? helpText;
+  final String? errorFormatText;
+  final String? errorInvalidText;
+  final String? fieldHintText;
+  final String? fieldLabelText;
+
   const SmartDateTimePicker({
     super.key,
     required this.formControlName,
@@ -75,6 +85,14 @@ class SmartDateTimePicker extends StatefulWidget {
     this.timeFormat,
     this.dateCustomFormatter,
     this.timeCustomFormatter,
+    this.maxWidth = 450,
+    this.cancelText,
+    this.confirmText,
+    this.helpText,
+    this.errorFormatText,
+    this.errorInvalidText,
+    this.fieldHintText,
+    this.fieldLabelText,
   });
 
   @override
@@ -97,6 +115,23 @@ class _SmartDateTimePickerState extends State<SmartDateTimePicker> {
     }
   }
 
+  bool get _is24HourFormat {
+    if (widget.use24HourFormat) return true;
+    if (AppTheme.isInitialized) {
+      return AppTheme.instance.getTimeFormat() == '24h';
+    }
+    return false;
+  }
+
+  String get _fallbackDateFormat {
+    if (AppTheme.isInitialized) {
+      return AppTheme.instance.getCalendarFormat();
+    }
+    return 'dd MMM yyyy';
+  }
+
+  String get _fallbackTimeFormat => _is24HourFormat ? 'HH:mm' : 'hh:mm a';
+
   // ── Formatting helpers ──────────────────────────────────────────────
 
   String _formatValue(String isoValue) {
@@ -106,10 +141,10 @@ class _SmartDateTimePickerState extends State<SmartDateTimePicker> {
         if (dt == null) return isoValue;
         if (widget.dateFormat != null) return DateFormat(widget.dateFormat).format(dt);
         if (widget.dateCustomFormatter != null) return widget.dateCustomFormatter!(dt);
-        return DateFormat('dd MMM yyyy').format(dt);
+        return DateFormat(_fallbackDateFormat).format(dt);
 
       case SmartPickerMode.timeOnly:
-      // Stored as "HH:mm"
+        // Stored as "HH:mm"
         final parts = isoValue.split(':');
         if (parts.length < 2) return isoValue;
         final hour = int.tryParse(parts[0]) ?? 0;
@@ -119,7 +154,7 @@ class _SmartDateTimePickerState extends State<SmartDateTimePicker> {
         final dt = DateTime(now.year, now.month, now.day, tod.hour, tod.minute);
         if (widget.timeFormat != null) return DateFormat(widget.timeFormat).format(dt);
         if (widget.timeCustomFormatter != null) return widget.timeCustomFormatter!(dt);
-        return DateFormat('hh:mm a').format(dt);
+        return DateFormat(_fallbackTimeFormat).format(dt);
 
       case SmartPickerMode.dateAndTime:
         final dt = DateTime.tryParse(isoValue);
@@ -128,12 +163,12 @@ class _SmartDateTimePickerState extends State<SmartDateTimePicker> {
             ? DateFormat(widget.dateFormat).format(dt)
             : (widget.dateCustomFormatter != null
             ? widget.dateCustomFormatter!(dt)
-            : DateFormat('dd MMM yyyy').format(dt));
+            : DateFormat(_fallbackDateFormat).format(dt));
         final tStr = widget.timeFormat != null
             ? DateFormat(widget.timeFormat).format(dt)
             : (widget.timeCustomFormatter != null
             ? widget.timeCustomFormatter!(dt)
-            : DateFormat('hh:mm a').format(dt));
+            : DateFormat(_fallbackTimeFormat).format(dt));
         return '$dStr  $tStr';
     }
   }
@@ -157,7 +192,10 @@ class _SmartDateTimePickerState extends State<SmartDateTimePicker> {
   }
 
   void _updateTextForMulti(List<String> values) {
-    _textController.text = values.map(_formatValue).join(', ');
+    final text = values.map(_formatValue).join(', ');
+    if (_textController.text != text) {
+      _textController.text = text;
+    }
   }
 
   // ── Picker logic ───────────────────────────────────────────────────
@@ -196,6 +234,18 @@ class _SmartDateTimePickerState extends State<SmartDateTimePicker> {
         initialDate: initialDate,
         firstDate: effectiveFirstDate,
         lastDate: effectiveLastDate,
+        cancelText: widget.cancelText,
+        confirmText: widget.confirmText,
+        helpText: widget.helpText,
+        errorFormatText: widget.errorFormatText,
+        errorInvalidText: widget.errorInvalidText,
+        fieldHintText: widget.fieldHintText,
+        fieldLabelText: widget.fieldLabelText,
+        barrierColor: Colors.black.withValues(alpha: 0.25),
+        builder: (ctx, child) => BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+          child: child!,
+        ),
       );
       if (pickedDate == null) return null; // user cancelled
     }
@@ -222,14 +272,24 @@ class _SmartDateTimePickerState extends State<SmartDateTimePicker> {
       pickedTime = await showTimePicker(
         context: context,
         initialTime: initialTime,
-        builder: AppTheme.instance.getTimeFormat() == '24h'
-            ? (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(alwaysUse24HourFormat: true),
-          child: child!,
-        )
-            : null,
+        cancelText: widget.cancelText,
+        confirmText: widget.confirmText,
+        helpText: widget.helpText,
+        errorInvalidText: widget.errorInvalidText,
+        barrierColor: Colors.black.withValues(alpha: 0.25),
+        builder: (ctx, child) {
+          Widget content = child!;
+          if (_is24HourFormat) {
+            content = MediaQuery(
+              data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true),
+              child: content,
+            );
+          }
+          return BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+            child: content,
+          );
+        },
       );
       if (pickedTime == null) return null; // user cancelled
     }
@@ -266,105 +326,114 @@ class _SmartDateTimePickerState extends State<SmartDateTimePicker> {
 
   @override
   Widget build(BuildContext context) {
-    // Multi-select branch
+    Widget content;
     if (widget.isMultiSelection) {
-      return _buildMultiSelect(context);
+      content = _buildMultiSelect(context);
+    } else {
+      content = _buildSingleSelect(context);
     }
-    // Single-select branch
-    return _buildSingleSelect(context);
+
+    if (widget.maxWidth != null) {
+      return ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: widget.maxWidth!),
+        child: content,
+      );
+    }
+    return content;
   }
 
   // ── Single selection ───────────────────────────────────────────────
 
   Widget _buildSingleSelect(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 450),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 4.0),
-        child: ReactiveStatusListenableBuilder(
-          formControlName: widget.formControlName,
-          builder: (context, control, child) {
-            final isValid = control.valid;
-            return ReactiveFormField<String, String>(
-              formControlName: widget.formControlName,
-              validationMessages: widget.validationMessages,
-              builder: (field) {
-                _textController.text =
-                field.value != null && field.value!.isNotEmpty
-                    ? _formatValue(field.value!)
-                    : '';
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
-                final bool isControlDisabled = field.control.disabled;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4.0),
+      child: ReactiveStatusListenableBuilder(
+        formControlName: widget.formControlName,
+        builder: (context, control, child) {
+          final isValid = control.valid;
+          return ReactiveFormField<String, String>(
+            formControlName: widget.formControlName,
+            validationMessages: widget.validationMessages,
+            builder: (field) {
+              final formattedText = field.value != null && field.value!.isNotEmpty
+                  ? _formatValue(field.value!)
+                  : '';
+              if (_textController.text != formattedText) {
+                _textController.text = formattedText;
+              }
 
-                return TextFormField(
-                  onTapOutside: (PointerDownEvent event) {
-                    FocusManager.instance.primaryFocus?.unfocus();
-                  },
-                  controller: _textController,
-                  focusNode: _focusNode,
-                  enabled: !isControlDisabled,
-                  readOnly: true,
-                  onTap: isControlDisabled
-                      ? null
-                      : () async {
-                    field.control.markAsTouched();
-                    final result = await _pickSingleValue(context, field.value);
-                    if (result != null) {
-                      field.didChange(result);
-                      widget.onChanged?.call(result);
-                    }
-                  },
-                  decoration: InputDecoration(
-                    isDense: false,
-                    labelText: widget.labelText,
-                    prefixIcon: widget.prefixIcon,
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (widget.suffixIcon != null) widget.suffixIcon! else Icon(_defaultIcon),
-                        if (widget.isGreenWarnNeed && isValid && control.value != null && (control.value as String).isNotEmpty)
-                          Icon(Icons.check_circle, color: SmartFormFieldTheme.successColor),
-                      ],
-                    ),
-                    errorText: field.errorText,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
-                      borderSide: const BorderSide(width: SmartFormFieldTheme.borderWidth),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
-                      borderSide: BorderSide(
-                        color: Theme.of(context).dividerColor,
-                        width: SmartFormFieldTheme.borderWidth,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
-                      borderSide: BorderSide(
-                        width: SmartFormFieldTheme.focusedBorderWidth,
-                        color: SmartFormFieldTheme.primaryColor,
-                      ),
-                    ),
-                    errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
-                      borderSide: BorderSide(
-                        color: Theme.of(context).colorScheme.error,
-                        width: SmartFormFieldTheme.borderWidth,
-                      ),
-                    ),
-                    focusedErrorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
-                      borderSide: BorderSide(
-                        width: SmartFormFieldTheme.focusedBorderWidth,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
+              final bool isControlDisabled = field.control.disabled;
+
+              return TextFormField(
+                onTapOutside: (PointerDownEvent event) {
+                  FocusManager.instance.primaryFocus?.unfocus();
+                },
+                controller: _textController,
+                focusNode: _focusNode,
+                enabled: !isControlDisabled,
+                readOnly: true,
+                onTap: isControlDisabled
+                    ? null
+                    : () async {
+                  field.control.markAsTouched();
+                  final result = await _pickSingleValue(context, field.value);
+                  if (result != null) {
+                    field.didChange(result);
+                    widget.onChanged?.call(result);
+                  }
+                },
+                decoration: InputDecoration(
+                  isDense: false,
+                  labelText: widget.labelText,
+                  prefixIcon: widget.prefixIcon,
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.suffixIcon != null) widget.suffixIcon! else Icon(_defaultIcon),
+                      if (widget.isGreenWarnNeed && isValid && control.value != null && (control.value as String).isNotEmpty)
+                        Icon(Icons.check_circle, color: SmartFormFieldTheme.successColor),
+                    ],
+                  ),
+                  errorText: field.errorText,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
+                    borderSide: const BorderSide(width: SmartFormFieldTheme.borderWidth),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).dividerColor,
+                      width: SmartFormFieldTheme.borderWidth,
                     ),
                   ),
-                );
-              },
-            );
-          },
-        ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
+                    borderSide: BorderSide(
+                      width: SmartFormFieldTheme.focusedBorderWidth,
+                      color: primaryColor,
+                    ),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.error,
+                      width: SmartFormFieldTheme.borderWidth,
+                    ),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
+                    borderSide: BorderSide(
+                      width: SmartFormFieldTheme.focusedBorderWidth,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -372,158 +441,157 @@ class _SmartDateTimePickerState extends State<SmartDateTimePicker> {
   // ── Multi selection ────────────────────────────────────────────────
 
   Widget _buildMultiSelect(BuildContext context) {
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 450),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 4.0),
-        child: ReactiveStatusListenableBuilder(
-          formControlName: widget.formControlName,
-          builder: (context, control, child) {
-            final isValid = control.valid;
-            return ReactiveFormField<List<String>, List<String>>(
-              formControlName: widget.formControlName,
-              validationMessages: widget.validationMessages,
-              builder:
-                  (ReactiveFormFieldState<List<String>, List<String>> field) {
-                final values = _parseMultiValues(field.value);
-                _updateTextForMulti(values);
-                final bool isControlDisabled = field.control.disabled;
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
-                // Build chip list
-                final chips = values.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final v = entry.value;
-                  return Padding(
-                    key: ValueKey(v),
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Chip(
-                      backgroundColor: isControlDisabled
-                          ? Theme.of(context).disabledColor.withValues(alpha: 0.12)
-                          : null,
-                      side: BorderSide(
-                        width: 1,
-                        color: isControlDisabled
-                            ? Theme.of(context).disabledColor.withValues(alpha: 0.2)
-                            : Theme.of(context).colorScheme.outline,
-                      ),
-                      label: Text(
-                        _formatValue(v),
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: isControlDisabled ? Theme.of(context).disabledColor : null,
-                            ),
-                      ),
-                      deleteIcon: isControlDisabled ? null : const Icon(Icons.close, size: 16),
-                      onDeleted: isControlDisabled
-                          ? null
-                          : () {
-                        final updated = List<String>.from(values)
-                          ..removeAt(i);
-                        field.didChange(updated);
-                        widget.onChanged?.call(updated);
-                      },
-                    ),
-                  );
-                }).toList();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4.0),
+      child: ReactiveStatusListenableBuilder(
+        formControlName: widget.formControlName,
+        builder: (context, control, child) {
+          final isValid = control.valid;
+          return ReactiveFormField<List<String>, List<String>>(
+            formControlName: widget.formControlName,
+            validationMessages: widget.validationMessages,
+            builder:
+                (ReactiveFormFieldState<List<String>, List<String>> field) {
+              final values = _parseMultiValues(field.value);
+              _updateTextForMulti(values);
+              final bool isControlDisabled = field.control.disabled;
 
-                return TextFormField(
-                  onTapOutside: (PointerDownEvent event) {
-                    FocusManager.instance.primaryFocus?.unfocus();
-                  },
-                  controller: _textController,
-                  focusNode: _focusNode,
-                  enabled: !isControlDisabled,
-                  readOnly: true,
-                  onTap: isControlDisabled
-                      ? null
-                      : () async {
-                    field.control.markAsTouched();
-                    final result = await _pickSingleValue(context, null);
-                    if (result != null) {
-                      if (!values.contains(result)) {
-                        final updated = List<String>.from(values)
-                          ..add(result);
-                        field.didChange(updated);
-                        widget.onChanged?.call(updated);
-                      }
-                    }
-                  },
-                  decoration:
-                  InputDecoration(
-                    isDense: false,
-                    labelText: widget.labelText,
-                    prefixIcon: widget.prefixIcon,
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (widget.suffixIcon != null) widget.suffixIcon! else Icon(_defaultIcon),
-                        if (widget.isGreenWarnNeed && isValid && control.value != null && (control.value as List).isNotEmpty)
-                          Icon(Icons.check_circle, color: SmartFormFieldTheme.successColor),
-                      ],
-                    ),
-                    errorText: field.errorText,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
-                      borderSide: const BorderSide(width: SmartFormFieldTheme.borderWidth),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
-                      borderSide: BorderSide(
-                        color: Theme.of(context).dividerColor,
-                        width: SmartFormFieldTheme.borderWidth,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(
-                        SmartFormFieldTheme.radius,
-                      ),
-                      borderSide: BorderSide(
-                        width: SmartFormFieldTheme.focusedBorderWidth,
-                        color: SmartFormFieldTheme.primaryColor,
-                      ),
-                    ),
-                    errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
-                      borderSide: BorderSide(
-                        color: Theme.of(context).colorScheme.error,
-                        width: SmartFormFieldTheme.borderWidth,
-                      ),
-                    ),
-                    focusedErrorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
-                      borderSide: BorderSide(
-                        width: SmartFormFieldTheme.focusedBorderWidth,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ).copyWith(
-                    prefix: chips.isNotEmpty
-                        ? Padding(
-                      padding: EdgeInsets.only(
-                        right:
-                        30.0 +
-                            (widget.prefixIcon == null ? 0 : 35),
-                      ),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(children: chips),
-                      ),
-                    )
+              // Build chip list
+              final chips = values.asMap().entries.map((entry) {
+                final i = entry.key;
+                final v = entry.value;
+                return Padding(
+                  key: ValueKey(v),
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Chip(
+                    backgroundColor: isControlDisabled
+                        ? Theme.of(context).disabledColor.withValues(alpha: 0.12)
                         : null,
+                    side: BorderSide(
+                      width: 1,
+                      color: isControlDisabled
+                          ? Theme.of(context).disabledColor.withValues(alpha: 0.2)
+                          : Theme.of(context).colorScheme.outline,
+                    ),
+                    label: Text(
+                      _formatValue(v),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: isControlDisabled ? Theme.of(context).disabledColor : null,
+                          ),
+                    ),
+                    deleteIcon: isControlDisabled ? null : const Icon(Icons.close, size: 16),
+                    onDeleted: isControlDisabled
+                        ? null
+                        : () {
+                      final updated = List<String>.from(values)
+                        ..removeAt(i);
+                      field.didChange(updated.isEmpty ? null : updated);
+                      widget.onChanged?.call(updated.isEmpty ? null : updated);
+                    },
                   ),
-                  showCursor: false,
-                  enableInteractiveSelection: false,
-                  cursorColor: Colors.transparent,
-                  style: chips.isNotEmpty
-                      ? const TextStyle(
-                    color: Colors.transparent,
-                    height: 0.0,
+                );
+              }).toList();
+
+              return TextFormField(
+                onTapOutside: (PointerDownEvent event) {
+                  FocusManager.instance.primaryFocus?.unfocus();
+                },
+                controller: _textController,
+                focusNode: _focusNode,
+                enabled: !isControlDisabled,
+                readOnly: true,
+                onTap: isControlDisabled
+                    ? null
+                    : () async {
+                  field.control.markAsTouched();
+                  final result = await _pickSingleValue(context, null);
+                  if (result != null) {
+                    if (!values.contains(result)) {
+                      final updated = List<String>.from(values)
+                        ..add(result);
+                      field.didChange(updated);
+                      widget.onChanged?.call(updated);
+                    }
+                  }
+                },
+                decoration:
+                InputDecoration(
+                  isDense: false,
+                  labelText: widget.labelText,
+                  prefixIcon: widget.prefixIcon,
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.suffixIcon != null) widget.suffixIcon! else Icon(_defaultIcon),
+                      if (widget.isGreenWarnNeed && isValid && control.value != null && (control.value as List).isNotEmpty)
+                        Icon(Icons.check_circle, color: SmartFormFieldTheme.successColor),
+                    ],
+                  ),
+                  errorText: field.errorText,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
+                    borderSide: const BorderSide(width: SmartFormFieldTheme.borderWidth),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).dividerColor,
+                      width: SmartFormFieldTheme.borderWidth,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(
+                      SmartFormFieldTheme.radius,
+                    ),
+                    borderSide: BorderSide(
+                      width: SmartFormFieldTheme.focusedBorderWidth,
+                      color: primaryColor,
+                    ),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.error,
+                      width: SmartFormFieldTheme.borderWidth,
+                    ),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(SmartFormFieldTheme.radius),
+                    borderSide: BorderSide(
+                      width: SmartFormFieldTheme.focusedBorderWidth,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ).copyWith(
+                  prefix: chips.isNotEmpty
+                      ? Padding(
+                    padding: EdgeInsets.only(
+                      right:
+                      30.0 +
+                          (widget.prefixIcon == null ? 0 : 35),
+                    ),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(children: chips),
+                    ),
                   )
                       : null,
-                );
-              },
-            );
-          },
-        ),
+                ),
+                showCursor: false,
+                enableInteractiveSelection: false,
+                cursorColor: Colors.transparent,
+                style: chips.isNotEmpty
+                    ? const TextStyle(
+                  color: Colors.transparent,
+                  height: 0.0,
+                )
+                    : null,
+              );
+            },
+          );
+        },
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/constants/app_spacings.dart';
+import '../core/shared_services/navigation_service.dart';
 import '../core/shared_widgets/smart_snack_bar.dart';
 import '../core/theme/app_theme.dart';
 import 'colors_screen.dart';
@@ -13,6 +14,29 @@ import 'navigation_screen.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
+
+  Widget _getScreenForSection(String title) {
+    switch (title) {
+      case 'Colors':
+        return const ColorsScreen();
+      case 'Typography':
+        return const TypographyScreen();
+      case 'Snack Bars':
+        return const SnackBarsScreen();
+      case 'Buttons':
+        return const ButtonsScreen();
+      case 'Dialogs & Popups':
+        return const DialogsScreen();
+      case 'Spacings':
+        return const SpacingsScreen();
+      case 'Form Fields':
+        return const FormFieldsScreen();
+      case 'Navigation Styles':
+        return const NavigationScreen();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +77,6 @@ class HomePage extends StatelessWidget {
                       onChanged: (key) {
                         if (key != null) {
                           changeTheme(key);
-                          AppTheme.instance.updateTheme(key);
                         }
                       },
                       items: themeMap.entries
@@ -99,64 +122,14 @@ class HomePage extends StatelessWidget {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(30),
                       onTap: () {
-                        if (section.title == 'Colors') {
-                          Navigator.push(
+                        final screen = _getScreenForSection(section.title);
+                        if (screen is! SizedBox) {
+                          SmartNavigation.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (context) => const ColorsScreen(),
-                            ),
-                          );
-                        } else if (section.title == 'Typography') {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const TypographyScreen(),
-                            ),
-                          );
-                        } else if (section.title == 'Snack Bars') {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SnackBarsScreen(),
-                            ),
-                          );
-                        } else if (section.title == 'Dialogs & Popups') {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const DialogsScreen(),
-                            ),
-                          );
-                        } else if (section.title == 'Spacings') {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SpacingsScreen(),
-                            ),
-                          );
-                        } else if (section.title == 'Buttons') {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ButtonsScreen(),
-                            ),
-                          );
-                        } else if (section.title == 'Form Fields') {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const FormFieldsScreen(),
-                            ),
-                          );
-                        } else if (section.title == 'Navigation Styles') {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const NavigationScreen(),
-                            ),
+                            screen,
+                            transition: SmartTransitionType.slideRight,
                           );
                         } else {
-                          // Mock navigation action
                           SmartSnackBars.show(
                             message: '${section.title} clicked! Navigation coming soon.',
                             type: NotificationType.info,

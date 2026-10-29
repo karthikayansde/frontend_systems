@@ -31,11 +31,11 @@ class SmartPrimaryButton extends StatefulWidget {
     this.clearFocus = false,
     this.isOutlined = false,
     this.isText = false,
-    this.heroTag
+    this.heroTag,
   }) {
     assert(
-    !(autoLoading && isLoading),
-    'Do not use both autoLoading and isLoading together.',
+      !(autoLoading && isLoading),
+      'Do not use both autoLoading and isLoading together.',
     );
   }
 
@@ -73,128 +73,108 @@ class _SmartPrimaryButtonState extends State<SmartPrimaryButton> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    final effectiveBackgroundColor = widget.backgroundColor ?? theme.colorScheme.primary;
-    final effectiveTextColor = (widget.isOutlined || widget.isText)
-        ? effectiveBackgroundColor
-        : theme.colorScheme.onPrimary;
+    final effectiveBackgroundColor =
+        widget.backgroundColor ?? theme.colorScheme.primary;
+    // Compute high-contrast text color dynamically based on background luminance
+    final contrastColor = effectiveBackgroundColor.computeLuminance() < 0.45
+        ? Colors.white
+        : Colors.black87;
 
-    final bool isButtonDisabled = _effectiveLoading || widget.isDisable || widget.onPressed == null;
+    // For outlined or text buttons, if the background/seed color is too dark in dark mode,
+    // ensure text color has sufficient luminance against dark surfaces.
+    final Color effectiveTextColor;
+    if (widget.isOutlined || widget.isText) {
+      if (isDark && effectiveBackgroundColor.computeLuminance() < 0.35) {
+        effectiveTextColor = const Color(0xFFD0BCFF);
+      } else {
+        effectiveTextColor = effectiveBackgroundColor;
+      }
+    } else {
+      effectiveTextColor = contrastColor;
+    }
 
-    final borderRadius =
-    BorderRadius.circular(SmartFormFieldTheme.radius);
+    final bool isButtonDisabled =
+        _effectiveLoading || widget.isDisable || widget.onPressed == null;
 
+    final borderRadius = BorderRadius.circular(SmartFormFieldTheme.radius);
     final shape = RoundedRectangleBorder(borderRadius: borderRadius);
+
+    final disabledFg = (widget.isOutlined || widget.isText)
+        ? effectiveTextColor.withValues(alpha: 0.45)
+        : contrastColor.withValues(alpha: 0.65);
+
+    final horizontalPadding =
+        (widget.width != null && widget.width! < 130) ? 12.0 : 20.0;
 
     final buttonStyle = widget.isText
         ? TextButton.styleFrom(
-      foregroundColor: effectiveTextColor,
-      disabledForegroundColor: effectiveTextColor.withValues(alpha: 0.5),
-      shape: shape,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    )
+            foregroundColor: effectiveTextColor,
+            disabledForegroundColor: disabledFg,
+            shape: shape,
+            padding: EdgeInsets.symmetric(
+                horizontal: horizontalPadding, vertical: 8),
+          )
         : widget.isOutlined
-        ? OutlinedButton.styleFrom(
-      foregroundColor: effectiveTextColor,
-      disabledForegroundColor: effectiveTextColor.withValues(alpha: 0.4),
-      side: BorderSide(
-        color: isButtonDisabled
-            ? effectiveBackgroundColor.withValues(alpha: 0.4)
-            : effectiveBackgroundColor,
-      ),
-      shape: shape,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-    )
-        : ElevatedButton.styleFrom(
-      backgroundColor: effectiveBackgroundColor,
-      foregroundColor: effectiveTextColor,
-      disabledBackgroundColor: effectiveBackgroundColor.withValues(alpha: 0.4),
-      disabledForegroundColor: effectiveTextColor.withValues(alpha: 0.6),
-      shape: shape,
-      elevation: 2,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-    );
+            ? OutlinedButton.styleFrom(
+                foregroundColor: effectiveTextColor,
+                disabledForegroundColor: disabledFg,
+                side: BorderSide(
+                  color: isButtonDisabled
+                      ? effectiveTextColor.withValues(alpha: 0.3)
+                      : effectiveTextColor,
+                ),
+                shape: shape,
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              )
+            : ElevatedButton.styleFrom(
+                backgroundColor: effectiveBackgroundColor,
+                foregroundColor: effectiveTextColor,
+                disabledBackgroundColor:
+                    effectiveBackgroundColor.withValues(alpha: 0.35),
+                disabledForegroundColor: disabledFg,
+                shape: shape,
+                elevation: 2,
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              );
 
-    final textColor = isButtonDisabled
-        ? (widget.isText
-            ? effectiveTextColor.withValues(alpha: 0.5)
-            : widget.isOutlined
-                ? effectiveTextColor.withValues(alpha: 0.4)
-                : effectiveTextColor.withValues(alpha: 0.6))
-        : effectiveTextColor;
+    final textColor = isButtonDisabled ? disabledFg : effectiveTextColor;
 
     final child = Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: widget.isText ? MainAxisSize.min : MainAxisSize.max,
-      children: widget.isText
-          ? [
-              if (widget.icon != null)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: Icon(widget.icon, size: 20, color: textColor),
-                ),
-              Text(
-                widget.label,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: textColor,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-                textAlign: TextAlign.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (widget.icon != null)
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: Icon(widget.icon, size: 20, color: textColor),
+          ),
+        Flexible(
+          child: Text(
+            widget.label,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: textColor,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (_effectiveLoading)
+          Padding(
+            padding: const EdgeInsets.only(left: 8.0),
+            child: SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(textColor),
               ),
-              if (_effectiveLoading)
-                Padding(
-                  padding: const EdgeInsets.only(left: 8.0),
-                  child: SizedBox(
-                    height: 18,
-                    width: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(textColor),
-                    ),
-                  ),
-                ),
-            ]
-          : [
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: widget.icon != null
-                      ? Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: Icon(widget.icon, size: 20, color: textColor),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ),
-              Text(
-                widget.label,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: textColor,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: _effectiveLoading
-                      ? Padding(
-                          padding: const EdgeInsets.only(left: 8.0),
-                          child: SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(textColor),
-                            ),
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ),
-            ],
+            ),
+          ),
+      ],
     );
 
     final Widget button = SizedBox(
@@ -202,21 +182,21 @@ class _SmartPrimaryButtonState extends State<SmartPrimaryButton> {
       height: widget.isText ? null : widget.height,
       child: widget.isText
           ? TextButton(
-        onPressed: isButtonDisabled ? null : _handlePress,
-        style: buttonStyle,
-        child: child,
-      )
+              onPressed: isButtonDisabled ? null : _handlePress,
+              style: buttonStyle,
+              child: child,
+            )
           : widget.isOutlined
-          ? OutlinedButton(
-        onPressed: isButtonDisabled ? null : _handlePress,
-        style: buttonStyle,
-        child: child,
-      )
-          : ElevatedButton(
-        onPressed: isButtonDisabled ? null : _handlePress,
-        style: buttonStyle,
-        child: child,
-      ),
+              ? OutlinedButton(
+                  onPressed: isButtonDisabled ? null : _handlePress,
+                  style: buttonStyle,
+                  child: child,
+                )
+              : ElevatedButton(
+                  onPressed: isButtonDisabled ? null : _handlePress,
+                  style: buttonStyle,
+                  child: child,
+                ),
     );
 
     if (widget.heroTag != null) {
@@ -257,7 +237,6 @@ class StyledIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
       width: buttonSize,
       height: buttonSize,
@@ -266,9 +245,9 @@ class StyledIconButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         border: isOutlined
             ? Border.all(
-          color: Theme.of(context).colorScheme.outline,
-          width: 1,
-        )
+                color: Theme.of(context).colorScheme.outline,
+                width: 1,
+              )
             : null,
       ),
       child: Material(
@@ -296,7 +275,13 @@ class SmartFAB extends StatelessWidget {
   final String? heroTag;
   final Color? backgroundColor;
   final Widget child;
-  const SmartFAB({super.key, required this.onPressed, required this.heroTag, this.backgroundColor, required this.child});
+  const SmartFAB({
+    super.key,
+    required this.onPressed,
+    required this.heroTag,
+    this.backgroundColor,
+    required this.child,
+  });
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton(
